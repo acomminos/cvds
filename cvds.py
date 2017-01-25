@@ -4,22 +4,22 @@ import cv2
 import sys
 import numpy as np
 
-#cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(0)
 #cap = cv2.VideoCapture('examples/demo-ds-still.mp4')
 #cap = cv2.VideoCapture('examples/demo-gbasp-shaky.mp4')
 #cap = cv2.VideoCapture('examples/demo-switch-complex.mp4')
-cap = cv2.VideoCapture('examples/demo-gameboy-shaky.mp4')
+#cap = cv2.VideoCapture('examples/demo-gameboy-shaky.mp4')
 
 last_frame = None
 mean = None
 decay = 0.9 # percentage of mean to retain each step
 
 last_poly = None
-poly_decay = 0.3 # percentage of last poly to keep each stage
+poly_decay = 0.0 # percentage of last poly to keep each stage
                  # helps with smooth transitions
 
-output_width = 512
-output_height = 512
+output_width = 1280
+output_height = 720
 
 # Wishlist:
 # - Hold good regions fixed over time.
@@ -43,6 +43,7 @@ while True:
         continue
 
     dt = cv2.absdiff(blur, last_frame)
+    last_frame = blur
 
     # Apply binary thresholding to changed regions.
     delta_threshold = 10 # Only count significantly changed regions.
@@ -73,8 +74,11 @@ while True:
 
     contours, hierarchy = cv2.findContours(dilated.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-    bestRatio = 0
+    bestScore = 0
     bestPoly = None
+
+    total_area = image.shape[0] * image.shape[1]
+    total_flow = mean_integral[-1,-1]
 
     for c in contours:
         c_epsilon = 15
@@ -93,12 +97,28 @@ while True:
 
             # TODO: is this the best result?
             #       it attempts to maximize flow and minimize area by the L1 norm
-            ratio = flow/255 + 1/area
+            #       maybe learn weights and train this with regression.
 
-            if ratio > bestRatio:
-                bestRatio = ratio
+            # We want to score all regions equally past 0.5 parts of the area.
+            # This sigmoid function does just that.
+            area_prop = area/total_area if total_area > 0 else 0
+            #area_score = 1/(1 + np.exp(-20 * area_prop))
+            area_score = 1 - area_prop
+
+            # Percentage of image flow within this region.
+            flow_score = float(flow)/float(total_flow) if total_flow > 0 else 0
+
+            score = flow_score * area_score
+
+            cv2.putText(annotations, "as: %.2f, fs: %.2f, ts: %.2f" %
+                        (area_score, flow_score, score),
+                        (x + 16, y + 16), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255))
+
+            if score >= bestScore:
+                bestScore = score
                 bestPoly = poly
 
+    # If we still failed to find a suitable poly, try the next frame.
     if bestPoly is None:
         continue
 
@@ -106,7 +126,6 @@ while True:
 
     if last_poly is None:
         last_poly = bestPoly.copy()
-        continue
 
     # Consider the last poly when repositioning.
     last_poly = poly_decay * last_poly + (1 - poly_decay) * bestPoly
@@ -144,7 +163,6 @@ while True:
 
     if cv2.waitKey(int(1000.0/60.0)) == 27: # esc
         break
-    last_frame = blur
 
 cap.release()
 cv2.destroyAllWindows()
