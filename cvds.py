@@ -4,11 +4,12 @@ import cv2
 import sys
 import numpy as np
 
-cap = cv2.VideoCapture(0)
+#cap = cv2.VideoCapture(0)
 #cap = cv2.VideoCapture('examples/demo-ds-still.mp4')
 #cap = cv2.VideoCapture('examples/demo-gbasp-shaky.mp4')
 #cap = cv2.VideoCapture('examples/demo-switch-complex.mp4')
-#cap = cv2.VideoCapture('examples/demo-gameboy-shaky.mp4')
+cap = cv2.VideoCapture('examples/demo-gameboy-shaky.mp4')
+#cap = cv2.VideoCapture('examples/demo-gbc-shaky.mp4')
 
 last_frame = None
 mean = None
@@ -18,8 +19,8 @@ last_poly = None
 poly_decay = 0.0 # percentage of last poly to keep each stage
                  # helps with smooth transitions
 
-output_width = 1280
-output_height = 720
+output_width = 512
+output_height = 512
 
 # Wishlist:
 # - Hold good regions fixed over time.
@@ -34,7 +35,7 @@ while True:
 
     frame = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
 
-    sigma = 19
+    sigma = 7
     blur = cv2.GaussianBlur(frame, (sigma, sigma), 0)
     cv2.normalize(blur, blur, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
 
@@ -69,10 +70,10 @@ while True:
     mean_integral = cv2.integral(nmean)
 
     # Find contours in original image.
-    edges = cv2.Canny(blur, 25, 30)
+    edges = cv2.Canny(blur, 5, 30)
     dilated = cv2.dilate(edges, np.ones((15, 15)))
 
-    contours, hierarchy = cv2.findContours(dilated.copy(), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contours, hierarchy = cv2.findContours(dilated.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
     bestScore = 0
     bestPoly = None
@@ -80,6 +81,7 @@ while True:
     total_area = image.shape[0] * image.shape[1]
     total_flow = mean_integral[-1,-1]
 
+    cv2.drawContours(annotations, contours, 0, (255,0,0), 2)
     for c in contours:
         c_epsilon = 15
         poly = cv2.approxPolyDP(c, c_epsilon, True)
@@ -99,11 +101,9 @@ while True:
             #       it attempts to maximize flow and minimize area by the L1 norm
             #       maybe learn weights and train this with regression.
 
-            # We want to score all regions equally past 0.5 parts of the area.
-            # This sigmoid function does just that.
+            # Ensure that we minimize regions that are too large.
             area_prop = area/total_area if total_area > 0 else 0
-            #area_score = 1/(1 + np.exp(-20 * area_prop))
-            area_score = 1 - area_prop
+            area_score = 1 - 0.5 * area_prop
 
             # Percentage of image flow within this region.
             flow_score = float(flow)/float(total_flow) if total_flow > 0 else 0
