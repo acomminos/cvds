@@ -8,8 +8,8 @@ import numpy as np
 #cap = cv2.VideoCapture('examples/demo-ds-still.mp4')
 #cap = cv2.VideoCapture('examples/demo-gbasp-shaky.mp4')
 #cap = cv2.VideoCapture('examples/demo-switch-complex.mp4')
-cap = cv2.VideoCapture('examples/demo-gameboy-shaky.mp4')
-#cap = cv2.VideoCapture('examples/demo-gbc-shaky.mp4')
+#cap = cv2.VideoCapture('examples/demo-gameboy-shaky.mp4')
+cap = cv2.VideoCapture('examples/demo-gbc-shaky.mp4')
 
 last_frame = None
 mean = None
@@ -26,6 +26,18 @@ output_height = 512
 # - Hold good regions fixed over time.
 # - Smoother interpolation.
 #    - Outlier detection.
+
+DEBUG_WINDOW = "debug"
+
+cv2.namedWindow(DEBUG_WINDOW)
+
+CANNY_LABEL = "Canny"
+CANNY_DEFAULT = 25
+cv2.createTrackbar("Canny", DEBUG_WINDOW, CANNY_DEFAULT, 255, lambda _: None)
+
+OPTICAL_FLOW_LABEL = "Optical Flow Threshold"
+OPTICAL_FLOW_DEFAULT = 10
+cv2.createTrackbar(OPTICAL_FLOW_LABEL, DEBUG_WINDOW, OPTICAL_FLOW_DEFAULT, 255, lambda _: None)
 
 while True:
     ret, image = cap.read()
@@ -47,7 +59,8 @@ while True:
     last_frame = blur
 
     # Apply binary thresholding to changed regions.
-    delta_threshold = 10 # Only count significantly changed regions.
+    # Only count significantly changed regions.
+    delta_threshold = cv2.getTrackbarPos(OPTICAL_FLOW_LABEL, DEBUG_WINDOW)
     ret, thresh = cv2.threshold(dt, delta_threshold, 255, cv2.THRESH_BINARY)
 
     if mean is None:
@@ -70,8 +83,9 @@ while True:
     mean_integral = cv2.integral(nmean)
 
     # Find contours in original image.
-    edges = cv2.Canny(blur, 5, 30)
-    dilated = cv2.dilate(edges, np.ones((15, 15)))
+    canny_thresh = cv2.getTrackbarPos(CANNY_LABEL, DEBUG_WINDOW)
+    edges = cv2.Canny(blur, canny_thresh, canny_thresh * 2)
+    dilated = cv2.dilate(edges, np.ones((10, 10)))
 
     contours, hierarchy = cv2.findContours(dilated.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -155,11 +169,8 @@ while True:
     Mp = cv2.getPerspectiveTransform(src, dst)
     output = cv2.warpPerspective(image, Mp, (output_width, output_height))
 
-    cv2.imshow("mean", nmean)
-    cv2.imshow("edges", edges)
-    cv2.imshow("dilated-edges", dilated)
-    cv2.imshow("annotations", annotations)
     cv2.imshow("output", output)
+    cv2.imshow("debug", annotations)
 
     if cv2.waitKey(int(1000.0/60.0)) == 27: # esc
         break
