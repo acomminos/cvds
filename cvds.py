@@ -6,18 +6,14 @@ import numpy as np
 
 #cap = cv2.VideoCapture(0)
 #cap = cv2.VideoCapture('examples/demo-ds-still.mp4')
-#cap = cv2.VideoCapture('examples/demo-gbasp-shaky.mp4')
+cap = cv2.VideoCapture('examples/demo-gbasp-shaky.mp4')
 #cap = cv2.VideoCapture('examples/demo-switch-complex.mp4')
 #cap = cv2.VideoCapture('examples/demo-gameboy-shaky.mp4')
-cap = cv2.VideoCapture('examples/demo-gbc-shaky.mp4')
+#cap = cv2.VideoCapture('examples/demo-gbc-shaky.mp4')
 
 last_frame = None
 mean = None
 decay = 0.9 # percentage of mean to retain each step
-
-last_poly = None
-poly_decay = 0.0 # percentage of last poly to keep each stage
-                 # helps with smooth transitions
 
 output_width = 512
 output_height = 512
@@ -32,22 +28,32 @@ DEBUG_WINDOW = "debug"
 cv2.namedWindow(DEBUG_WINDOW)
 
 CANNY_LABEL = "Canny"
-CANNY_DEFAULT = 25
-cv2.createTrackbar("Canny", DEBUG_WINDOW, CANNY_DEFAULT, 255, lambda _: None)
+CANNY_DEFAULT = 30
+cv2.createTrackbar(CANNY_LABEL, DEBUG_WINDOW, CANNY_DEFAULT, 255, lambda _: None)
+
+GAUSSIAN_LABEL = "Gaussian"
+GAUSSIAN_DEFAULT = 5
+cv2.createTrackbar(GAUSSIAN_LABEL, DEBUG_WINDOW, GAUSSIAN_DEFAULT, 30, lambda _: None)
 
 OPTICAL_FLOW_LABEL = "Optical Flow Threshold"
 OPTICAL_FLOW_DEFAULT = 10
 cv2.createTrackbar(OPTICAL_FLOW_LABEL, DEBUG_WINDOW, OPTICAL_FLOW_DEFAULT, 255, lambda _: None)
 
+POLYFIT_LABEL = "Polygon Fit Epsilon"
+POLYFIT_DEFAULT = 50
+cv2.createTrackbar(POLYFIT_LABEL, DEBUG_WINDOW, POLYFIT_DEFAULT, 255, lambda _: None)
+
 while True:
     ret, image = cap.read()
     if not ret:
-        print "error"
+        print "Error:", ret
         sys.exit(1)
 
     frame = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
 
-    sigma = 7
+    sigma = cv2.getTrackbarPos(GAUSSIAN_LABEL, DEBUG_WINDOW)
+    if sigma % 2 == 0:
+        sigma = sigma + 1
     blur = cv2.GaussianBlur(frame, (sigma, sigma), 0)
     cv2.normalize(blur, blur, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
 
@@ -90,14 +96,14 @@ while True:
     contours, hierarchy = cv2.findContours(dilated.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
     bestScore = 0
-    bestPoly = None
+    bestPoly = np.zeros((4, 1, 2), dtype='int32')
 
     total_area = image.shape[0] * image.shape[1]
     total_flow = mean_integral[-1,-1]
 
     cv2.drawContours(annotations, contours, 0, (255,0,0), 2)
     for c in contours:
-        c_epsilon = 15
+        c_epsilon = cv2.getTrackbarPos(POLYFIT_LABEL, DEBUG_WINDOW)
         poly = cv2.approxPolyDP(c, c_epsilon, True)
         # Only consider quadrilaterals.
         if poly.shape[0] == 4:
@@ -132,21 +138,9 @@ while True:
                 bestScore = score
                 bestPoly = poly
 
-    # If we still failed to find a suitable poly, try the next frame.
-    if bestPoly is None:
-        continue
-
     cv2.drawContours(annotations, [bestPoly], 0, (0,0,255), 5)
 
-    if last_poly is None:
-        last_poly = bestPoly.copy()
-
-    # Consider the last poly when repositioning.
-    last_poly = poly_decay * last_poly + (1 - poly_decay) * bestPoly
-    #cv2.drawContours(annotations, [last_poly], 0, (255,0,0), 5)
-
-    poly = np.array(last_poly[:,0], dtype='Float32')
-
+    poly = np.array(bestPoly[:,0], dtype='Float32')
 
     # Ensure that the smallest normed sum is in the top left, and the largest
     # normed sum is in the bottom right.
@@ -169,10 +163,13 @@ while True:
     Mp = cv2.getPerspectiveTransform(src, dst)
     output = cv2.warpPerspective(image, Mp, (output_width, output_height))
 
-    cv2.imshow("output", output)
-    cv2.imshow("debug", annotations)
+    stage_output = np.concatenate([mean, dilated], axis=0)
 
-    if cv2.waitKey(int(1000.0/60.0)) == 27: # esc
+    cv2.imshow("output", output)
+    cv2.imshow("stage-output", stage_output)
+    cv2.imshow(DEBUG_WINDOW, annotations)
+
+    if cv2.waitKey(int(1000.0/30.0)) == 27: # esc
         break
 
 cap.release()
