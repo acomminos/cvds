@@ -71,9 +71,6 @@ def find_flow_region(image, sigma=5, edge_threshold=30, fitting_error=50,
     total_area = image.shape[0] * image.shape[1]
     total_flow = hot_integral[-1,-1]
 
-    if annotations is not None:
-        cv2.drawContours(annotations, contours, 0, (255,0,0), 2)
-
     for c in contours:
         poly = cv2.approxPolyDP(c, fitting_error, True)
         # Only consider quadrilaterals.
@@ -111,6 +108,9 @@ def find_flow_region(image, sigma=5, edge_threshold=30, fitting_error=50,
             if score >= best_score:
                 best_score = score
                 best_poly = poly
+
+    if annotations is not None:
+        cv2.drawContours(annotations, [best_poly], 0, (255,0,0), 3)
 
     # TODO: move this to custom state object.
     next_acc = {

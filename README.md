@@ -1,5 +1,7 @@
 # cvds #
 
+![](https://github.com/acomminos/cvds/raw/master/src/demo.gif)
+
 cvds is an experimental library written using OpenCV and Python for detecting and warping recordings of LCD displays into higher quality, undistorted footage.
 
 The initial motivation behind this project was to develop a real-time solution for portable console recording.
