@@ -50,6 +50,9 @@ def find_flow_region(image, sigma=5, edge_threshold=30, fitting_error=50,
 
     # Weight the latest deltas appropriately.
     cv2.addWeighted(image_dt, 1, hot_region, 1.0 - flow_decay, 0, hot_region)
+    # Normalize the image so that if the new frame failed to introduce new
+    # optical flow, we preserve the existing flow.
+    cv2.normalize(hot_region, hot_region, alpha=0, beta=255, norm_type=cv2.NORM_MINMAX)
     # Threshold very small mean values from consideration.
     cv2.threshold(hot_region, 15, 255, cv2.THRESH_TOZERO, hot_region)
     # Compute an integral image for fast summation within candidate regions.
