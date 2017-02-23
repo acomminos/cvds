@@ -8,7 +8,7 @@ import numpy as np
 FLOW_THRESHOLD = 10
 
 def find_flow_region(image, sigma=5, edge_threshold=30, fitting_error=50,
-                     flow_decay=0.1, acc=None, annotations=None, debug=False):
+                     flow_decay=0.1, score_decay=0.1, acc=None, annotations=None, debug=False):
     """Finds a quadrilateral region likely to contain an LCD display.
     This method attempts to find closed regions with four well-defined edges
     and a high amount of optical flow over the last few frames.
@@ -18,7 +18,11 @@ def find_flow_region(image, sigma=5, edge_threshold=30, fitting_error=50,
     edge_threshold - The canny edge threshold used for finding initial edge regions.
     fitting_error - The threshold for screen fitting error. Increasing this may help detect screens.
     flow_decay - The amount prior frames' optical flow will be decreased each
-                 subsequent frame.
+                 subsequent frame. Increasing this can increase region stability
+                 at the expense of tight motion tracking.
+    score_decay - The amount the required score should decrease each frame
+                  for the selection of a new candidate region.
+                  Scores are normalized in [0, 1].
     acc - (optional) An opaque accumulator of optical flow data.
           If present, optical flow data will be used to prefer regions whose
           contents change frequently (like in an action video game).
@@ -56,8 +60,14 @@ def find_flow_region(image, sigma=5, edge_threshold=30, fitting_error=50,
 
     contours, hierarchy = cv2.findContours(image_edges.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
-    best_poly = np.zeros((4, 1, 2), dtype='int32')
-    best_score = 0
+    best_poly = None
+    best_score = None
+    if acc is not None:
+        best_poly = acc['last_poly']
+        best_score = max(acc['last_score'] - score_decay, 0)
+    else:
+        best_poly = np.zeros((4, 1, 2), dtype='int32')
+        best_score = 0
 
     total_area = image.shape[0] * image.shape[1]
     total_flow = hot_integral[-1,-1]
@@ -103,16 +113,19 @@ def find_flow_region(image, sigma=5, edge_threshold=30, fitting_error=50,
                 best_score = score
                 best_poly = poly
 
+    # TODO: move this to custom state object.
     next_acc = {
         'last_frame': image_blur,
-        'hot_region': hot_region
+        'hot_region': hot_region,
+        'last_poly': best_poly,
+        'last_score': best_score
     }
 
     if debug:
         # TODO: remove debug visualizations
-        debug_output = np.vstack((np.hstack((image_blur, image_dt)),
-                                  np.hstack((image_edges, hot_region))))
-        cv2.imshow("cvds-debug", debug_output)
+        debug_output = np.vstack((image_blur, image_dt, image_edges, hot_region))
+        debug_output_resized = cv2.resize(debug_output, (image.shape[0], image.shape[1]))
+        cv2.imshow("cvds-debug", debug_output_resized)
 
     return (best_poly[:,0], next_acc)
 

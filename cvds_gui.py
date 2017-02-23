@@ -28,9 +28,13 @@ def run_capture():
     GAUSSIAN_DEFAULT = 3
     cv2.createTrackbar(GAUSSIAN_LABEL, DEBUG_WINDOW, GAUSSIAN_DEFAULT, 30, lambda _: None)
 
-    DECAY_LABEL = "Decay Threshold"
-    DECAY_DEFAULT = 10
-    cv2.createTrackbar(DECAY_LABEL, DEBUG_WINDOW, DECAY_DEFAULT, 100, lambda _: None)
+    FLOW_DECAY_LABEL = "Flow Decay Threshold"
+    FLOW_DECAY_DEFAULT = 10
+    cv2.createTrackbar(FLOW_DECAY_LABEL, DEBUG_WINDOW, FLOW_DECAY_DEFAULT, 100, lambda _: None)
+
+    SCORE_DECAY_LABEL = "Score Decay Threshold"
+    SCORE_DECAY_DEFAULT = 10
+    cv2.createTrackbar(SCORE_DECAY_LABEL, DEBUG_WINDOW, SCORE_DECAY_DEFAULT, 100, lambda _: None)
 
     POLYFIT_LABEL = "Polygon Fit Epsilon"
     POLYFIT_DEFAULT = 50
@@ -45,7 +49,8 @@ def run_capture():
 
         canny_thresh = cv2.getTrackbarPos(CANNY_LABEL, DEBUG_WINDOW)
         sigma = cv2.getTrackbarPos(GAUSSIAN_LABEL, DEBUG_WINDOW)
-        decay = float(cv2.getTrackbarPos(DECAY_LABEL, DEBUG_WINDOW))/100.0
+        flow_decay = float(cv2.getTrackbarPos(FLOW_DECAY_LABEL, DEBUG_WINDOW))/100.0
+        score_decay = float(cv2.getTrackbarPos(SCORE_DECAY_LABEL, DEBUG_WINDOW))/100.0
         polyfit_epsilon = cv2.getTrackbarPos(POLYFIT_LABEL, DEBUG_WINDOW)
 
         annotations = image.copy()
@@ -54,7 +59,8 @@ def run_capture():
                 sigma=sigma,
                 edge_threshold=canny_thresh,
                 fitting_error=polyfit_epsilon,
-                flow_decay=decay,
+                flow_decay=flow_decay,
+                score_decay=score_decay,
                 acc=acc,
                 annotations=annotations,
                 debug=True)
