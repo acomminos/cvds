@@ -1,6 +1,0 @@
-- Rectangle hough transform post edge detection may be helpful in detecting screen region.
-    - Will there be enough contrast to reliably detect a black screen?
-    - Not with AMOLED.
-- Nyquist rate
-    - The given rectangular region in the image we'll be sampling from must have a resolution of 2x the screen resolution.
-    - Likewise, our framerate should be twice the game's.

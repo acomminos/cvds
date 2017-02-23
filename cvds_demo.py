@@ -3,7 +3,7 @@
 import cv2
 import sys
 import numpy as np
-import cvds
+from cvds import core
 import getopt
 
 def run_capture():
@@ -55,7 +55,7 @@ def run_capture():
 
         annotations = image.copy()
         image_gray = cv2.cvtColor(image, cv2.COLOR_RGB2GRAY)
-        poly, acc = cvds.find_flow_region(image_gray,
+        poly, acc = core.find_flow_region(image_gray,
                 sigma=sigma,
                 edge_threshold=canny_thresh,
                 fitting_error=polyfit_epsilon,
@@ -65,7 +65,7 @@ def run_capture():
                 annotations=annotations,
                 debug=True)
 
-        image_warped = cvds.warp_region(image, poly, (OUTPUT_WIDTH, OUTPUT_HEIGHT))
+        image_warped = core.warp_region(image, poly, (OUTPUT_WIDTH, OUTPUT_HEIGHT))
 
         cv2.imshow("output", image_warped)
         cv2.imshow(DEBUG_WINDOW, annotations)
