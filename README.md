@@ -1,6 +1,6 @@
 # cvds #
 
-![](https://github.com/acomminos/cvds/raw/master/src/demo.gif)
+![](https://raw.githubusercontent.com/acomminos/cvds/master/demo.gif)
 
 cvds is an experimental library written using OpenCV and Python for detecting and warping recordings of LCD displays into higher quality, undistorted footage.
 
