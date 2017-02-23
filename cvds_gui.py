@@ -4,11 +4,13 @@ import cv2
 import sys
 import numpy as np
 import cvds
+import getopt
 
 def run_capture():
     if len(sys.argv) > 2:
         print "Usage: %s [path to video file]" % sys.argv[0]
         sys.exit(0)
+
     video_in = sys.argv[1] if len(sys.argv) == 2 else 0
     cap = cv2.VideoCapture(video_in)
 
@@ -38,7 +40,7 @@ def run_capture():
     while True:
         ret, image = cap.read()
         if not ret:
-            print "Error:", ret
+            print "Error opening up the capture stream."
             sys.exit(1)
 
         canny_thresh = cv2.getTrackbarPos(CANNY_LABEL, DEBUG_WINDOW)
@@ -54,13 +56,12 @@ def run_capture():
                 fitting_error=polyfit_epsilon,
                 flow_decay=decay,
                 acc=acc,
-                annotations=annotations)
+                annotations=annotations,
+                debug=True)
 
         image_warped = cvds.warp_region(image, poly, (OUTPUT_WIDTH, OUTPUT_HEIGHT))
-        stage_output = np.concatenate([acc['hot_region']], axis=0)
 
         cv2.imshow("output", image_warped)
-        cv2.imshow("stage-output", stage_output)
         cv2.imshow(DEBUG_WINDOW, annotations)
 
         if cv2.waitKey(int(1000.0/30.0)) == 27: # esc

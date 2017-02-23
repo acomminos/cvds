@@ -8,7 +8,7 @@ import numpy as np
 FLOW_THRESHOLD = 10
 
 def find_flow_region(image, sigma=5, edge_threshold=30, fitting_error=50,
-                     flow_decay=0.1, acc=None, annotations=None):
+                     flow_decay=0.1, acc=None, annotations=None, debug=False):
     """Finds a quadrilateral region likely to contain an LCD display.
     This method attempts to find closed regions with four well-defined edges
     and a high amount of optical flow over the last few frames.
@@ -51,10 +51,10 @@ def find_flow_region(image, sigma=5, edge_threshold=30, fitting_error=50,
     # Compute an integral image for fast summation within candidate regions.
     hot_integral = cv2.integral(hot_region)
 
-    image_edges = cv2.Canny(image_blur, edge_threshold, edge_threshold * 2)
+    image_edges = cv2.Canny(image_blur, edge_threshold, edge_threshold * 3)
     cv2.dilate(image_edges, np.ones((10, 10)), image_edges)
 
-    contours, hierarchy = cv2.findContours(image_edges, cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
+    contours, hierarchy = cv2.findContours(image_edges.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE)
 
     best_poly = np.zeros((4, 1, 2), dtype='int32')
     best_score = 0
@@ -107,6 +107,12 @@ def find_flow_region(image, sigma=5, edge_threshold=30, fitting_error=50,
         'last_frame': image_blur,
         'hot_region': hot_region
     }
+
+    if debug:
+        # TODO: remove debug visualizations
+        debug_output = np.vstack((np.hstack((image_blur, image_dt)),
+                                  np.hstack((image_edges, hot_region))))
+        cv2.imshow("cvds-debug", debug_output)
 
     return (best_poly[:,0], next_acc)
 
