@@ -6,25 +6,16 @@ import numpy as np
 import cvds
 
 def run_capture():
-    #cap = cv2.VideoCapture(0)
-    #cap = cv2.VideoCapture('examples/demo-ds-still.mp4')
-    cap = cv2.VideoCapture('examples/demo-gbasp-shaky.mp4')
-    #cap = cv2.VideoCapture('examples/demo-switch-complex.mp4')
-    #cap = cv2.VideoCapture('examples/demo-gameboy-shaky.mp4')
-    #cap = cv2.VideoCapture('examples/demo-gbc-shaky.mp4')
+    if len(sys.argv) > 2:
+        print "Usage: %s [path to video file]" % sys.argv[0]
+        sys.exit(0)
+    video_in = sys.argv[1] if len(sys.argv) == 2 else 0
+    cap = cv2.VideoCapture(video_in)
 
-    decay = 0.9 # percentage of mean to retain each step
-
-    output_width = 512
-    output_height = 512
-
-    # Wishlist:
-    # - Hold good regions fixed over time.
-    # - Smoother interpolation.
-    #    - Outlier detection.
+    OUTPUT_WIDTH = 512
+    OUTPUT_HEIGHT = 512
 
     DEBUG_WINDOW = "debug"
-
     cv2.namedWindow(DEBUG_WINDOW)
 
     CANNY_LABEL = "Canny"
@@ -65,7 +56,7 @@ def run_capture():
                 acc=acc,
                 annotations=annotations)
 
-        image_warped = cvds.warp_region(image, poly, (output_width, output_height))
+        image_warped = cvds.warp_region(image, poly, (OUTPUT_WIDTH, OUTPUT_HEIGHT))
         stage_output = np.concatenate([acc['hot_region']], axis=0)
 
         cv2.imshow("output", image_warped)
