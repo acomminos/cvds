@@ -3,10 +3,6 @@
 import cv2
 import numpy as np
 
-# This is a reasonable enough constant to warrant lack of mutability.
-# This is simply used to cull optical flow below a certain threshold.
-FLOW_THRESHOLD = 10
-
 def find_flow_region(image, sigma=5, edge_threshold=30, fitting_error=50,
                      flow_decay=0.1, score_decay=0.1, acc=None, annotations=None, debug=False):
     """Finds a quadrilateral region likely to contain an LCD display.
